@@ -1,0 +1,149 @@
+{
+  "info": {
+    "_postman_id": "d341934e-6fa9-46f5-8b22-22b148a95ca8",
+    "name": "QAuto API — User lifecycle",
+    "description": "Collection Runner scenario: creates a unique user, updates their profile and units, adds/updates/removes a car and expense, then removes the user.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://qauto.forstudy.space/api" },
+    { "key": "password", "value": "Qauto123" },
+    { "key": "carBrandId", "value": "1" },
+    { "key": "carModelId", "value": "1" },
+    { "key": "initialMileage", "value": "100" },
+    { "key": "updatedMileage", "value": "200" }
+  ],
+  "item": [
+    {
+      "name": "1. Create a unique user",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const unique = Date.now() + '-' + pm.variables.replaceIn('{{$randomInt}}');",
+              "pm.collectionVariables.set('email', 'qauto.' + unique + '@example.com');",
+              "pm.collectionVariables.set('originalName', 'Runner' + unique.slice(-6));",
+              "pm.collectionVariables.set('originalLastName', 'User');",
+              "pm.collectionVariables.set('newName', 'Updated' + unique.slice(-6));",
+              "pm.collectionVariables.set('newLastName', 'Driver');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+              "pm.test('Response has status ok and a user id', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.status).to.eql('ok');",
+              "  pm.expect(body.data.userId).to.be.a('number');",
+              "  pm.collectionVariables.set('userId', body.data.userId);",
+              "});",
+              "pm.test('JSON value check: created name is correct', () => pm.expect(pm.response.json().data.name).to.eql(pm.collectionVariables.get('originalName')));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{originalName}}\",\n  \"lastName\": \"{{originalLastName}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"repeatPassword\": \"{{password}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/auth/signup"
+      }
+    },
+    {
+      "name": "2. Update name and last name",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+        "pm.test('JSON value check: profile values were changed', () => {",
+        "  const body = pm.response.json(); pm.expect(body.status).to.eql('ok');",
+        "  pm.expect(body.data.name).to.eql(pm.collectionVariables.get('newName'));",
+        "  pm.expect(body.data.lastName).to.eql(pm.collectionVariables.get('newLastName'));",
+        "});"
+      ] } }],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"{{newName}}\",\n  \"lastName\": \"{{newLastName}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/users/profile"
+      }
+    },
+    {
+      "name": "3. Change distance unit to ml",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+        "pm.test('JSON value check: distance unit is ml', () => { const body = pm.response.json(); pm.expect(body.status).to.eql('ok'); pm.expect(body.data.distanceUnits).to.eql('ml'); });"
+      ] } }],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"distanceUnits\": \"ml\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/users/settings"
+      }
+    },
+    {
+      "name": "4. Add a car",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+        "pm.test('JSON value check: car is created', () => {",
+        "  const body = pm.response.json(); pm.expect(body.status).to.eql('ok');",
+        "  pm.expect(body.data.id).to.be.a('number');",
+        "  pm.expect(body.data.mileage).to.eql(Number(pm.collectionVariables.get('initialMileage')));",
+        "  pm.collectionVariables.set('carId', body.data.id);",
+        "});"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"carBrandId\": {{carBrandId}},\n  \"carModelId\": {{carModelId}},\n  \"mileage\": {{initialMileage}}\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/cars"
+      }
+    },
+    {
+      "name": "5. Update car mileage",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+        "pm.test('JSON value check: mileage is updated', () => { const body = pm.response.json(); pm.expect(body.status).to.eql('ok'); pm.expect(body.data.id).to.eql(Number(pm.collectionVariables.get('carId'))); pm.expect(body.data.mileage).to.eql(Number(pm.collectionVariables.get('updatedMileage'))); });"
+      ] } }],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"carBrandId\": {{carBrandId}},\n  \"carModelId\": {{carModelId}},\n  \"mileage\": {{updatedMileage}}\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/cars/{{carId}}"
+      }
+    },
+    {
+      "name": "6. Add car expense",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+        "pm.test('JSON value check: expense belongs to the car', () => { const body = pm.response.json(); pm.expect(body.status).to.eql('ok'); pm.expect(body.data.id).to.be.a('number'); pm.expect(body.data.carId).to.eql(Number(pm.collectionVariables.get('carId'))); pm.expect(body.data.mileage).to.eql(Number(pm.collectionVariables.get('updatedMileage'))); });"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"mileage\": {{updatedMileage}},\n  \"liters\": 15.5,\n  \"totalCost\": 80.75,\n  \"reportedAt\": \"2024-01-15\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/cars/{{carId}}/expenses"
+      }
+    },
+    {
+      "name": "7. Delete car",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+        "pm.test('JSON value check: deletion returns ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+      ] } }],
+      "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/cars/{{carId}}" }
+    },
+    {
+      "name": "8. Delete user",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+        "pm.test('JSON value check: deletion returns ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+      ] } }],
+      "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/users" }
+    }
+  ]
+}
